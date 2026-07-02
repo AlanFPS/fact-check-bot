@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fact-check-bot"
+version = "1.0.0"
+description = "A local-first Reddit fact-checking bot backed by an LLM."
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+license = "MIT"
+authors = [{ name = "fact-check-bot contributors" }]
+dependencies = [
+    "praw>=8.0,<9",
+    "openai>=1.40,<2",
+    "ddgs>=9.0,<10",
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.3,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "pytest-mock>=3.12,<4",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+fact-check-bot = "factcheckbot.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/factcheckbot"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["factcheckbot"]
+ignore_missing_imports = true

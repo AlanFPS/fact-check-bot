@@ -1,0 +1,23 @@
+services:
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+  bot:
+    build: .
+    depends_on:
+      - ollama
+    env_file:
+      - .env
+    environment:
+      LLM_BASE_URL: http://ollama:11434/v1
+      SEEN_DB_PATH: /home/bot/data/seen.sqlite3
+    volumes:
+      - bot-data:/home/bot/data
+
+volumes:
+  ollama:
+  bot-data:
