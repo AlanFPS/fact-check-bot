@@ -7,7 +7,7 @@ from factcheckbot.bot import Bot
 from factcheckbot.llm import LlmError
 from factcheckbot.metrics import Metrics
 from factcheckbot.models import FactCheckResult, GoogleClaim, GoogleReview, TriggerContext, Verdict
-from factcheckbot.pipeline import Pipeline
+from factcheckbot.pipeline import Pipeline, _cache_key, _tier_scope
 from factcheckbot.rate_limit import RateLimiter
 from factcheckbot.seen_store import SeenStore
 from tests.fixtures import CANNED_EVIDENCE, FakeComment, FakeReply
@@ -233,6 +233,23 @@ def test_run_cache_expiry_recomputes(settings):
     expired = Pipeline(settings, searcher, llm, cache_store=store, now=lambda: 1011.0)
     expired.run("claim")
 
+    assert searcher.queries == ["claim"]
+    assert llm.fact_check_calls == [("claim", CANNED_EVIDENCE)]
+    store.close()
+
+
+def test_run_corrupt_cache_payload_recomputes(settings):
+    settings.enable_verdict_cache = True
+    store = SeenStore(":memory:")
+    key = _cache_key("claim", _tier_scope(settings, None))
+    store.store_cached_verdict(key, "llm", "not valid json", now=1000.0)
+    searcher = FakeSearcher()
+    llm = FakeLlm()
+    pipeline = Pipeline(settings, searcher, llm, cache_store=store, now=lambda: 1001.0)
+
+    outcome = pipeline.run("claim")
+
+    assert outcome.source == "llm"
     assert searcher.queries == ["claim"]
     assert llm.fact_check_calls == [("claim", CANNED_EVIDENCE)]
     store.close()
@@ -580,6 +597,28 @@ def test_metrics_increment_and_interval_logging(settings, caplog):
     current = 11.0
     bot._maybe_log_metrics()
     assert any(record.message == "metrics" for record in caplog.records)
+    store.close()
+
+
+def test_real_post_metrics_increment_replies_posted(settings, monkeypatch):
+    settings.dry_run = False
+    metrics = Metrics()
+    store = SeenStore(":memory:")
+    bot = Bot(
+        settings,
+        reddit=None,
+        searcher=FakeSearcher(),
+        llm=FakeLlm(),
+        seen=store,
+        limiter=RateLimiter(store, 3, 30),
+        metrics=metrics,
+    )
+    monkeypatch.setattr(bot_module, "safe_reply", lambda *args, **kwargs: True)
+
+    assert bot._handle_item(FakeComment("!factcheck claim", fullname="t1_real"), "comment_stream")
+
+    assert metrics.replies_posted == 1
+    assert metrics.dry_run_replies == 0
     store.close()
 
 
