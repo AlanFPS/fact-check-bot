@@ -37,6 +37,8 @@ class FakeComment:
         author: str | None = "alice",
         parent: Any | None = None,
         fail_reply: bool = False,
+        subreddit: str = "testsub",
+        replies: list[Any] | None = None,
     ) -> None:
         self.body = body
         self.fullname = fullname
@@ -44,8 +46,10 @@ class FakeComment:
         self.permalink = f"/r/test/comments/{fullname}"
         self._parent = parent
         self.fail_reply = fail_reply
-        self.replies: list[str] = []
+        self.subreddit = FakeSubreddit(subreddit)
+        self.replies: list[Any] = replies or []
         self.read = False
+        self.refreshed = False
 
     def parent(self) -> Any:
         return self._parent
@@ -57,6 +61,26 @@ class FakeComment:
 
     def mark_read(self) -> None:
         self.read = True
+
+    def refresh(self) -> None:
+        self.refreshed = True
+
+
+@dataclass
+class FakeSubreddit:
+    display_name: str
+
+    def __str__(self) -> str:
+        return self.display_name
+
+
+@dataclass
+class FakeReply:
+    author: FakeAuthor | None
+
+    @classmethod
+    def by(cls, username: str | None) -> "FakeReply":
+        return cls(FakeAuthor(username) if username is not None else None)
 
 
 class FakeSubmission:

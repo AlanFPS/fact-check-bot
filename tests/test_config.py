@@ -24,6 +24,7 @@ def test_env_parsing(monkeypatch):
     monkeypatch.setenv("REDDIT_USERNAME", "FactBot")
     monkeypatch.setenv("REDDIT_PASSWORD", "password")
     monkeypatch.setenv("MONITORED_SUBREDDITS", "A,b+C")
+    monkeypatch.setenv("SUBREDDIT_ALLOWLIST", "Allowed,Other")
     monkeypatch.setenv("SEARCH_TIMELIMIT", "none")
     monkeypatch.setenv("MAX_REPLY_CHARS", "12000")
     monkeypatch.setenv("GOOGLE_FACTCHECK_API_KEY", "  ")
@@ -31,6 +32,7 @@ def test_env_parsing(monkeypatch):
     settings = Settings(_env_file=None)
 
     assert settings.monitored_subreddits == ["a", "b", "c"]
+    assert settings.subreddit_allowlist == ["allowed", "other"]
     assert settings.reddit_user_agent == "fact-check-bot/1.0 (by u/FactBot)"
     assert settings.search_timelimit is None
     assert settings.max_reply_chars == 10000
@@ -38,6 +40,13 @@ def test_env_parsing(monkeypatch):
     assert settings.google_factcheck_max_claims == 3
     assert settings.google_factcheck_language == "en"
     assert settings.google_factcheck_timeout_seconds == 10.0
+    assert not settings.enable_verdict_cache
+    assert settings.cache_ttl_seconds == 604800
+    assert not settings.enable_fulltext_evidence
+    assert settings.evidence_fetch_top_n == 2
+    assert settings.evidence_fetch_timeout_seconds == 8.0
+    assert settings.evidence_fulltext_chars == 1500
+    assert settings.metrics_log_interval_seconds == 300.0
 
 
 def test_google_factcheck_api_key_kept(monkeypatch):

@@ -1,13 +1,15 @@
 """PRAW helpers for Reddit I/O."""
 
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Literal
 
 import praw
 import praw.exceptions
 import prawcore.exceptions
 
 from factcheckbot.config import Settings
+
+OwnReplyStatus = Literal["yes", "no", "unknown"]
 
 
 def build_reddit(settings: Settings) -> praw.Reddit:
@@ -65,3 +67,16 @@ def mark_read(item: Any) -> None:
         item.mark_read()
     except Exception:
         return
+
+
+def has_own_reply(item: Any, bot_username: str) -> OwnReplyStatus:
+    try:
+        item.refresh()
+        replies = getattr(item, "replies", []) or []
+        for reply in replies:
+            author = getattr(reply, "author", None)
+            if author is not None and str(author).lower() == bot_username.lower():
+                return "yes"
+    except Exception:
+        return "unknown"
+    return "no"

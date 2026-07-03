@@ -55,6 +55,7 @@ See `.env.example` for all settings.
 | `REDDIT_USERNAME` | Bot account username. |
 | `REDDIT_PASSWORD` | Bot account password. |
 | `MONITORED_SUBREDDITS` | Comma or plus separated subreddit list. |
+| `SUBREDDIT_ALLOWLIST` | Optional reply allowlist. Set before going live in real subs. |
 | `LLM_BASE_URL` | OpenAI-compatible endpoint, defaults to Ollama. |
 | `LLM_MODEL` | Model name, defaults to `qwen3:4b-instruct`. |
 | `GOOGLE_FACTCHECK_API_KEY` | Optional Google Fact Check Tools API key. |
@@ -66,6 +67,18 @@ See `.env.example` for all settings.
 If `GOOGLE_FACTCHECK_API_KEY` is set, the bot first checks Google's Fact Check Tools API for published fact-checks. When it finds matches, it replies with those publisher ratings and links directly, without calling the LLM. If the key is blank, Google has no hits, or the request fails, it falls back to the web-search plus LLM path.
 
 To enable it, create a Google Cloud API key with the Fact Check Tools API enabled and set `GOOGLE_FACTCHECK_API_KEY` in `.env`. You can also tune `GOOGLE_FACTCHECK_MAX_CLAIMS`, `GOOGLE_FACTCHECK_LANGUAGE`, and `GOOGLE_FACTCHECK_TIMEOUT_SECONDS`.
+
+## Optional Runtime Features
+
+`ENABLE_VERDICT_CACHE=false` by default. When enabled, repeated normalized claims reuse a SQLite cached `PipelineOutcome` for `CACHE_TTL_SECONDS` seconds.
+
+`ENABLE_FULLTEXT_EVIDENCE=false` by default. When enabled, the bot tries to enrich the top `EVIDENCE_FETCH_TOP_N` web results with `DDGS.extract`, capped by `EVIDENCE_FULLTEXT_CHARS`; if extraction is unavailable or fails, snippets are used.
+
+Metrics are in-process counters logged every `METRICS_LOG_INTERVAL_SECONDS` seconds. Use `LOG_JSON=true` if you want structured metric fields.
+
+The bot keeps lightweight local SQLite state for seen items, pending replies, rate limits, and optional cache entries by default.
+
+Before posting outside a test subreddit, set `SUBREDDIT_ALLOWLIST` to the subs where the bot is allowed to reply. Inbox mentions bypass the allowlist because the user explicitly summoned the bot.
 
 ## Usage
 
