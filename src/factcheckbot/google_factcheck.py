@@ -7,6 +7,7 @@ import httpx
 
 from factcheckbot.config import Settings
 from factcheckbot.logging_setup import get_logger
+from factcheckbot.metrics import Metrics
 from factcheckbot.models import GoogleClaim, GoogleReview
 
 logger = get_logger(__name__)
@@ -15,9 +16,15 @@ logger = get_logger(__name__)
 class GoogleFactCheckClient:
     ENDPOINT = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
 
-    def __init__(self, settings: Settings, client: httpx.Client | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        client: httpx.Client | None = None,
+        metrics: Metrics | None = None,
+    ) -> None:
         self._settings = settings
         self._client = client or httpx.Client(timeout=settings.google_factcheck_timeout_seconds)
+        self._metrics = metrics
 
     @property
     def enabled(self) -> bool:
@@ -38,6 +45,8 @@ class GoogleFactCheckClient:
                 timeout=self._settings.google_factcheck_timeout_seconds,
             )
             if response.status_code != 200:
+                if self._metrics is not None:
+                    self._metrics.google_failures += 1
                 logger.warning("Google fact-check failed with status %s", response.status_code)
                 return []
             raw_claims = response.json().get("claims") or []
@@ -55,6 +64,8 @@ class GoogleFactCheckClient:
                 : self._settings.google_factcheck_max_claims
             ]
         except Exception as exc:
+            if self._metrics is not None:
+                self._metrics.google_failures += 1
             logger.warning("Google fact-check failed (%s)", type(exc).__name__)
             return []
 
@@ -80,9 +91,7 @@ def _map_claim(raw: dict[str, Any]) -> GoogleClaim | None:
             publisher = {}
         reviews.append(
             GoogleReview(
-                publisher=str(
-                    publisher.get("name") or publisher.get("site") or "Unknown"
-                ).strip(),
+                publisher=str(publisher.get("name") or publisher.get("site") or "Unknown").strip(),
                 textual_rating=str(review.get("textualRating") or "").strip(),
                 url=url,
                 title=_optional_str(review.get("title")),

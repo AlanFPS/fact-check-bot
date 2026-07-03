@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     bot_trigger: str = "!factcheck"
     monitored_subreddits: Annotated[list[str], NoDecode] = ["testingground4bots"]
+    subreddit_allowlist: Annotated[list[str], NoDecode] = []
     enable_comment_stream: bool = True
     enable_inbox_mentions: bool = True
 
@@ -34,6 +35,10 @@ class Settings(BaseSettings):
     search_region: str = "us-en"
     search_timelimit: str | None = None
     search_timeout_seconds: float = 15.0
+    enable_fulltext_evidence: bool = False
+    evidence_fetch_top_n: int = 2
+    evidence_fetch_timeout_seconds: float = 8.0
+    evidence_fulltext_chars: int = 1500
 
     google_factcheck_api_key: str | None = None
     google_factcheck_max_claims: int = 3
@@ -44,6 +49,8 @@ class Settings(BaseSettings):
     max_reply_chars: int = 9500
     rate_limit_per_user_per_hour: int = 3
     rate_limit_global_per_hour: int = 30
+    enable_verdict_cache: bool = False
+    cache_ttl_seconds: int = 604800
 
     seen_db_path: str = "data/seen.sqlite3"
     dry_run: bool = True
@@ -51,10 +58,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = False
     poll_sleep_seconds: float = 10.0
+    metrics_log_interval_seconds: float = 300.0
 
-    @field_validator("monitored_subreddits", mode="before")
+    @field_validator("monitored_subreddits", "subreddit_allowlist", mode="before")
     @classmethod
-    def parse_subreddits(cls, value: object) -> object:
+    def parse_subreddit_list(cls, value: object) -> object:
         if isinstance(value, str):
             return [part.strip().lower() for part in re.split(r"[,+]", value) if part.strip()]
         return value

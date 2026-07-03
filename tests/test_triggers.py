@@ -41,8 +41,7 @@ def test_quoted_or_code_only_trigger_is_suppressed():
 
 def test_extract_inline_query_variants():
     assert (
-        extract_inline_query("please !factcheck The Sky Is Blue", "!factcheck")
-        == "The Sky Is Blue"
+        extract_inline_query("please !factcheck The Sky Is Blue", "!factcheck") == "The Sky Is Blue"
     )
     assert extract_inline_query("!factcheck", "!factcheck") == ""
     assert extract_inline_query("!factcheck: 'quoted claim'", "!factcheck") == "quoted claim"

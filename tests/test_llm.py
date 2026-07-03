@@ -79,10 +79,7 @@ def test_fact_check_retries_bad_json(settings):
 
 
 def test_non_finite_confidence_is_rejected_and_retried(settings):
-    bad = (
-        '{"verdict":"FALSE","confidence":NaN,"reasoning":"Bad confidence.",'
-        '"cited_sources":[1]}'
-    )
+    bad = '{"verdict":"FALSE","confidence":NaN,"reasoning":"Bad confidence.","cited_sources":[1]}'
     completions = FakeCompletions([bad, CANNED_LLM_JSON])
     client = LlmClient(settings, client=FakeClient(completions))
 

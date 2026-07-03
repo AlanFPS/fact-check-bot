@@ -227,11 +227,5 @@ def _assemble_reply(
     else:
         sources = "*No web sources were found for this claim.*"
     return (
-        f"{header}\n\n"
-        f"> {claim}\n\n"
-        f"{reasoning}\n\n"
-        f"{sources}\n\n"
-        "---\n"
-        f"{DISCLAIMER}\n\n"
-        f"{footer}"
+        f"{header}\n\n> {claim}\n\n{reasoning}\n\n{sources}\n\n---\n{DISCLAIMER}\n\n{footer}"
     ).strip()
