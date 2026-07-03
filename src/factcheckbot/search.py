@@ -115,13 +115,15 @@ def _truncate(text: str, n: int) -> str:
 
 
 def _extracted_text(extracted: object) -> str:
+    if isinstance(extracted, str):
+        return extracted
     if isinstance(extracted, dict):
         for key in ("text", "content", "body"):
             value = extracted.get(key)
             if value:
                 return str(value)
         return ""
-    return str(extracted or "")
+    return ""
 
 
 def _extract_fulltext(extractor: Any, url: str, timeout: float) -> object:

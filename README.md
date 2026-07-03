@@ -28,19 +28,16 @@ With pip:
 Pull the default local model:
 
     ollama serve
-    ollama pull qwen3:4b-instruct
-
-Low-RAM alternative:
-
-    ollama pull llama3.2:3b
-
-Then set `LLM_MODEL=llama3.2:3b`.
-
-On Apple Silicon with about 24 GB unified memory, you can run a larger local model for free. A good upgrade is:
-
     ollama pull qwen3:14b
 
-Then set `LLM_MODEL=qwen3:14b`. Hosted OpenAI-compatible endpoints only cost money if you configure `LLM_BASE_URL` and `LLM_API_KEY` for a paid provider.
+`qwen3:14b` is the default and the recommended sweet spot on Apple Silicon with about 24 GB unified memory.
+
+Low-RAM alternatives:
+
+    ollama pull qwen3:4b-instruct
+    ollama pull llama3.2:3b
+
+Then set `LLM_MODEL=qwen3:4b-instruct` or `LLM_MODEL=llama3.2:3b`. Hosted OpenAI-compatible endpoints only cost money if you configure `LLM_BASE_URL` and `LLM_API_KEY` for a paid provider.
 
 Register a Reddit script app from the bot account at <https://www.reddit.com/prefs/apps>. Use `http://localhost:8080` as the redirect URI, then copy the client id, secret, username, and password into `.env`.
 
@@ -57,7 +54,7 @@ See `.env.example` for all settings.
 | `MONITORED_SUBREDDITS` | Comma or plus separated subreddit list. |
 | `SUBREDDIT_ALLOWLIST` | Optional reply allowlist. Set before going live in real subs. |
 | `LLM_BASE_URL` | OpenAI-compatible endpoint, defaults to Ollama. |
-| `LLM_MODEL` | Model name, defaults to `qwen3:4b-instruct`. |
+| `LLM_MODEL` | Model name, defaults to `qwen3:14b`. |
 | `GOOGLE_FACTCHECK_API_KEY` | Optional Google Fact Check Tools API key. |
 | `DRY_RUN` | Logs replies instead of posting when true. |
 | `SEEN_DB_PATH` | SQLite path for dedupe and rate limits. |
@@ -113,7 +110,7 @@ The second form checks the parent comment or post.
 Start Ollama, pull the model, then run the bot:
 
     docker compose up -d ollama
-    docker compose exec ollama ollama pull qwen3:4b-instruct
+    docker compose exec ollama ollama pull qwen3:14b
     docker compose up --build bot
 
 The compose file stores Ollama models and bot data in named volumes.

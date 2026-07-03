@@ -152,3 +152,50 @@ def test_fulltext_enrichment_degrades_when_extract_missing(settings):
     evidence = searcher.search("claim")
 
     assert evidence[0].snippet == "First source body."
+
+
+def test_fulltext_enrichment_ignores_junk_extract_results(settings):
+    class JunkExtractor:
+        def __init__(self, value: object) -> None:
+            self.value = value
+
+        def extract(self, url: str, fmt: str = "text_plain", timeout: float | None = None):
+            return self.value
+
+    settings.enable_fulltext_evidence = True
+    settings.evidence_fetch_top_n = 1
+    junk_values = [
+        ["not", "text"],
+        123,
+        None,
+        {"unexpected": "value"},
+    ]
+
+    for value in junk_values:
+        searcher = EvidenceSearcher(
+            settings,
+            ddgs_factory=FakeDDGS,
+            extractor_factory=lambda value=value, **kwargs: JunkExtractor(value),
+        )
+
+        evidence = searcher.search("claim")
+
+        assert evidence[0].snippet == "First source body."
+
+
+def test_fulltext_enrichment_keeps_original_snippet_when_extract_raises(settings):
+    class RaisingExtractor:
+        def extract(self, url: str, fmt: str = "text_plain", timeout: float | None = None):
+            raise RuntimeError("boom")
+
+    settings.enable_fulltext_evidence = True
+    settings.evidence_fetch_top_n = 1
+    searcher = EvidenceSearcher(
+        settings,
+        ddgs_factory=FakeDDGS,
+        extractor_factory=lambda **kwargs: RaisingExtractor(),
+    )
+
+    evidence = searcher.search("claim")
+
+    assert evidence[0].snippet == "First source body."
