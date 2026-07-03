@@ -3,7 +3,7 @@ import pytest
 from factcheckbot import bot as bot_module
 from factcheckbot.bot import Bot
 from factcheckbot.llm import LlmError
-from factcheckbot.models import FactCheckResult, TriggerContext, Verdict
+from factcheckbot.models import FactCheckResult, GoogleClaim, GoogleReview, TriggerContext, Verdict
 from factcheckbot.pipeline import Pipeline
 from factcheckbot.rate_limit import RateLimiter
 from factcheckbot.seen_store import SeenStore
@@ -39,6 +39,32 @@ class FakeLlm:
             reasoning="The evidence supports the claim.",
             cited_sources=[1],
         )
+
+
+GOOGLE_CLAIMS = [
+    GoogleClaim(
+        text="The earth is flat.",
+        claimant="Someone",
+        reviews=[
+            GoogleReview(
+                publisher="Fact Publisher",
+                textual_rating="False",
+                url="https://example.com/fact-check",
+            )
+        ],
+    )
+]
+
+
+class FakeGoogle:
+    def __init__(self, *, enabled: bool = True, claims=None) -> None:
+        self.enabled = enabled
+        self.claims = claims if claims is not None else GOOGLE_CLAIMS
+        self.queries: list[str] = []
+
+    def search(self, query: str):
+        self.queries.append(query)
+        return self.claims
 
 
 def ctx(inline_query: str = "") -> TriggerContext:
@@ -82,10 +108,70 @@ def test_run_wires_search_and_llm(settings):
     llm = FakeLlm()
     pipeline = Pipeline(settings, searcher, llm)
 
-    result, evidence = pipeline.run("claim")
+    outcome = pipeline.run("claim")
 
-    assert result.verdict == Verdict.TRUE
-    assert evidence == CANNED_EVIDENCE
+    assert outcome.source == "llm"
+    assert outcome.claim == "claim"
+    assert outcome.llm_result is not None
+    assert outcome.llm_result.verdict == Verdict.TRUE
+    assert outcome.evidence == CANNED_EVIDENCE
+    assert searcher.queries == ["claim"]
+    assert llm.fact_check_calls == [("claim", CANNED_EVIDENCE)]
+
+
+def test_run_google_hits_skip_search_and_llm(settings):
+    searcher = FakeSearcher()
+    llm = FakeLlm()
+    google = FakeGoogle(claims=GOOGLE_CLAIMS)
+    pipeline = Pipeline(settings, searcher, llm, google)
+
+    outcome = pipeline.run("claim")
+
+    assert outcome.source == "google"
+    assert outcome.claim == "claim"
+    assert outcome.google_claims == GOOGLE_CLAIMS
+    assert google.queries == ["claim"]
+    assert searcher.queries == []
+    assert llm.fact_check_calls == []
+
+
+def test_run_google_no_hits_falls_back_to_llm(settings):
+    searcher = FakeSearcher()
+    llm = FakeLlm()
+    google = FakeGoogle(claims=[])
+    pipeline = Pipeline(settings, searcher, llm, google)
+
+    outcome = pipeline.run("claim")
+
+    assert outcome.source == "llm"
+    assert google.queries == ["claim"]
+    assert searcher.queries == ["claim"]
+    assert llm.fact_check_calls == [("claim", CANNED_EVIDENCE)]
+
+
+def test_run_google_disabled_falls_back_without_call(settings):
+    searcher = FakeSearcher()
+    llm = FakeLlm()
+    google = FakeGoogle(enabled=False)
+    pipeline = Pipeline(settings, searcher, llm, google)
+
+    outcome = pipeline.run("claim")
+
+    assert outcome.source == "llm"
+    assert google.queries == []
+    assert searcher.queries == ["claim"]
+    assert llm.fact_check_calls == [("claim", CANNED_EVIDENCE)]
+
+
+def test_run_google_error_empty_result_falls_back(settings):
+    searcher = FakeSearcher()
+    llm = FakeLlm()
+    google = FakeGoogle(claims=[])
+    pipeline = Pipeline(settings, searcher, llm, google)
+
+    outcome = pipeline.run("claim")
+
+    assert outcome.source == "llm"
     assert searcher.queries == ["claim"]
     assert llm.fact_check_calls == [("claim", CANNED_EVIDENCE)]
 
