@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fact-check-bot"
-version = "1.0.0"
+version = "1.1.0"
 description = "A local-first Reddit fact-checking bot backed by an LLM."
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
@@ -14,6 +14,7 @@ dependencies = [
     "praw>=8.0,<9",
     "openai>=1.40,<2",
     "ddgs>=9.0,<10",
+    "httpx>=0.27,<1",
     "pydantic>=2.7,<3",
     "pydantic-settings>=2.3,<3",
 ]

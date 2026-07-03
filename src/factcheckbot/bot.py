@@ -6,6 +6,7 @@ from typing import Any
 import prawcore.exceptions
 
 from factcheckbot.config import Settings
+from factcheckbot.google_factcheck import GoogleFactCheckClient
 from factcheckbot.llm import LlmClient, LlmError
 from factcheckbot.logging_setup import get_logger
 from factcheckbot.models import TriggerContext
@@ -17,7 +18,7 @@ from factcheckbot.reddit_client import (
     mark_read,
     safe_reply,
 )
-from factcheckbot.rendering import render_no_claim_reply, render_reply
+from factcheckbot.rendering import render_no_claim_reply, render_outcome
 from factcheckbot.search import EvidenceSearcher
 from factcheckbot.seen_store import SeenStore
 from factcheckbot.triggers import (
@@ -39,12 +40,13 @@ class Bot:
         llm: LlmClient,
         seen: SeenStore,
         limiter: RateLimiter,
+        google: GoogleFactCheckClient | None = None,
     ) -> None:
         self.settings = settings
         self.reddit = reddit
         self.seen = seen
         self.limiter = limiter
-        self.pipeline = Pipeline(settings, searcher, llm)
+        self.pipeline = Pipeline(settings, searcher, llm, google)
         self._stop = False
 
     def request_stop(self) -> None:
@@ -151,12 +153,12 @@ class Bot:
                     self.limiter.record(ctx.author or "")
                 return ok
 
-            result, evidence = self.pipeline.run(claim)
+            outcome = self.pipeline.run(claim)
         except LlmError as exc:
             logger.warning("LLM unavailable, leaving item for retry: %s", exc)
             return False
 
-        reply = render_reply(claim, result, evidence, self.settings)
+        reply = render_outcome(outcome, self.settings)
         ok = safe_reply(item, reply, dry_run=self.settings.dry_run, logger=logger)
         if ok:
             self.seen.mark_seen(ctx.item_id)

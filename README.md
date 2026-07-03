@@ -1,6 +1,6 @@
 # fact-check-bot
 
-A small Reddit bot that replies to `!factcheck` requests with an AI-generated fact check. It is a rebuild of AlecM33/fact-check-bot, using a local or OpenAI-compatible LLM instead of Google's Fact Check Tools API, and is intended for education.
+A small Reddit bot that replies to `!factcheck` requests with published fact-checks or an AI-generated assessment. It is local/LLM-backed by default, with an optional Google Fact Check Tools API first tier that takes priority when a key is configured and falls back to web search plus LLM.
 
 ## How It Works
 
@@ -36,6 +36,12 @@ Low-RAM alternative:
 
 Then set `LLM_MODEL=llama3.2:3b`.
 
+On Apple Silicon with about 24 GB unified memory, you can run a larger local model for free. A good upgrade is:
+
+    ollama pull qwen3:14b
+
+Then set `LLM_MODEL=qwen3:14b`. Hosted OpenAI-compatible endpoints only cost money if you configure `LLM_BASE_URL` and `LLM_API_KEY` for a paid provider.
+
 Register a Reddit script app from the bot account at <https://www.reddit.com/prefs/apps>. Use `http://localhost:8080` as the redirect URI, then copy the client id, secret, username, and password into `.env`.
 
 ## Configuration
@@ -51,8 +57,15 @@ See `.env.example` for all settings.
 | `MONITORED_SUBREDDITS` | Comma or plus separated subreddit list. |
 | `LLM_BASE_URL` | OpenAI-compatible endpoint, defaults to Ollama. |
 | `LLM_MODEL` | Model name, defaults to `qwen3:4b-instruct`. |
+| `GOOGLE_FACTCHECK_API_KEY` | Optional Google Fact Check Tools API key. |
 | `DRY_RUN` | Logs replies instead of posting when true. |
 | `SEEN_DB_PATH` | SQLite path for dedupe and rate limits. |
+
+## Optional Google Fact Check Layer
+
+If `GOOGLE_FACTCHECK_API_KEY` is set, the bot first checks Google's Fact Check Tools API for published fact-checks. When it finds matches, it replies with those publisher ratings and links directly, without calling the LLM. If the key is blank, Google has no hits, or the request fails, it falls back to the web-search plus LLM path.
+
+To enable it, create a Google Cloud API key with the Fact Check Tools API enabled and set `GOOGLE_FACTCHECK_API_KEY` in `.env`. You can also tune `GOOGLE_FACTCHECK_MAX_CLAIMS`, `GOOGLE_FACTCHECK_LANGUAGE`, and `GOOGLE_FACTCHECK_TIMEOUT_SECONDS`.
 
 ## Usage
 

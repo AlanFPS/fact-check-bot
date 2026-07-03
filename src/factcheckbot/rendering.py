@@ -3,7 +3,7 @@
 from urllib.parse import urlparse
 
 from factcheckbot.config import Settings
-from factcheckbot.models import Evidence, FactCheckResult, Verdict
+from factcheckbot.models import Evidence, FactCheckResult, GoogleClaim, PipelineOutcome, Verdict
 
 VERDICT_EMOJI = {
     Verdict.TRUE: "✅",
@@ -26,6 +26,19 @@ FOOTER_TEMPLATE = (
 NO_CLAIM_DISCLAIMER = (
     "^(🤖 I'm an experimental, AI-powered bot, not an authoritative fact-checker.)"
 )
+GOOGLE_DISCLAIMER = (
+    "^(📰 These are real, published fact-checks from independent publishers, retrieved "
+    "via Google's Fact Check Tools API and collected by a bot. Ratings and wording are "
+    "each publisher's own, not the bot's opinion or an AI assessment.)"
+)
+
+
+def render_outcome(outcome: PipelineOutcome, settings: Settings) -> str:
+    if outcome.source == "google":
+        return render_google_reply(outcome.claim, outcome.google_claims, settings)
+    if outcome.llm_result is None:
+        raise ValueError("llm_result is required for LLM outcomes")
+    return render_reply(outcome.claim, outcome.llm_result, outcome.evidence, settings)
 
 
 def render_reply(
@@ -58,6 +71,21 @@ def render_no_claim_reply(settings: Settings) -> str:
         f"`{settings.bot_trigger}` as a reply to the comment or post you want checked.\n\n"
         "---\n"
         f"{NO_CLAIM_DISCLAIMER}"
+    )
+
+
+def render_google_reply(
+    claim: str,
+    google_claims: list[GoogleClaim],
+    settings: Settings,
+) -> str:
+    footer = FOOTER_TEMPLATE.format(trigger=settings.bot_trigger)
+    rows = _google_rows(google_claims, settings.google_factcheck_max_claims)
+    return _fit_google_to_limit(
+        claim=claim,
+        rows=rows,
+        footer=footer,
+        max_chars=settings.max_reply_chars,
     )
 
 
@@ -97,6 +125,68 @@ def _escape_markdown_title(title: str) -> str:
 
 def _is_http_url(url: str) -> bool:
     return urlparse(url).scheme in {"http", "https"}
+
+
+def _google_rows(google_claims: list[GoogleClaim], max_rows: int) -> list[str]:
+    rows: list[str] = []
+    for google_claim in google_claims:
+        for review in google_claim.reviews:
+            if not _is_http_url(review.url):
+                continue
+            claim_text = _escape_table_cell(_truncate_table_text(google_claim.text, 200))
+            rating = _escape_table_cell(review.textual_rating or "—")
+            publisher = _escape_table_cell(review.publisher)
+            rows.append(f"| {claim_text} | {rating} | [{publisher}]({review.url}) |")
+            if len(rows) >= max_rows:
+                return rows
+    return rows
+
+
+def _escape_table_cell(text: str) -> str:
+    return _escape_markdown_title(_collapse_table_text(text)).replace("|", r"\|")
+
+
+def _collapse_table_text(text: str) -> str:
+    return " ".join(text.split())
+
+
+def _truncate_table_text(text: str, max_chars: int) -> str:
+    collapsed = _collapse_table_text(text)
+    if len(collapsed) <= max_chars:
+        return collapsed
+    truncated = collapsed[: max_chars - 1].rstrip()
+    if " " in truncated:
+        truncated = truncated.rsplit(" ", 1)[0].rstrip()
+    return f"{truncated}…"
+
+
+def _fit_google_to_limit(
+    *,
+    claim: str,
+    rows: list[str],
+    footer: str,
+    max_chars: int,
+) -> str:
+    current_rows = rows[:]
+    while True:
+        reply = _assemble_google_reply(claim, current_rows, footer)
+        if len(reply) <= max_chars or not current_rows:
+            return reply[:max_chars]
+        current_rows.pop()
+
+
+def _assemble_google_reply(claim: str, rows: list[str], footer: str) -> str:
+    table = "| Claim | Rating | Source |\n|---|---|---|"
+    if rows:
+        table = f"{table}\n" + "\n".join(rows)
+    return (
+        "**Published fact-checks found** 📰\n\n"
+        f"> {claim}\n\n"
+        f"{table}\n\n"
+        "---\n"
+        f"{GOOGLE_DISCLAIMER}\n\n"
+        f"{footer}"
+    ).strip()
 
 
 def _fit_to_limit(

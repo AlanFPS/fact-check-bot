@@ -4,6 +4,7 @@ import signal
 
 from factcheckbot.bot import Bot
 from factcheckbot.config import Settings
+from factcheckbot.google_factcheck import GoogleFactCheckClient
 from factcheckbot.llm import LlmClient
 from factcheckbot.logging_setup import configure, get_logger
 from factcheckbot.rate_limit import RateLimiter
@@ -25,8 +26,9 @@ def main() -> int:
     )
     searcher = EvidenceSearcher(settings)
     llm = LlmClient(settings)
+    google = GoogleFactCheckClient(settings) if settings.google_factcheck_api_key else None
     reddit = build_reddit(settings)
-    bot = Bot(settings, reddit, searcher, llm, seen, limiter)
+    bot = Bot(settings, reddit, searcher, llm, seen, limiter, google=google)
 
     def _request_stop(_signum: int, _frame: object) -> None:
         logger.info("Shutdown requested")

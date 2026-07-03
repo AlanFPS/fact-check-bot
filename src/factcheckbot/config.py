@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     search_timelimit: str | None = None
     search_timeout_seconds: float = 15.0
 
+    google_factcheck_api_key: str | None = None
+    google_factcheck_max_claims: int = 3
+    google_factcheck_language: str = "en"
+    google_factcheck_timeout_seconds: float = 10.0
+
     max_claim_chars: int = 500
     max_reply_chars: int = 9500
     rate_limit_per_user_per_hour: int = 3
@@ -58,6 +63,13 @@ class Settings(BaseSettings):
     @classmethod
     def parse_search_timelimit(cls, value: object) -> object:
         if isinstance(value, str) and value.strip().lower() in {"", "none"}:
+            return None
+        return value
+
+    @field_validator("google_factcheck_api_key", mode="before")
+    @classmethod
+    def parse_google_factcheck_api_key(cls, value: object) -> object:
+        if isinstance(value, str) and value.strip() == "":
             return None
         return value
 

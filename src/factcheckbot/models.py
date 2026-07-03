@@ -4,7 +4,7 @@ import math
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 MAX_REASONING_CHARS = 1500
 
@@ -23,6 +23,20 @@ class Evidence(BaseModel):
     title: str
     url: str
     snippet: str
+
+
+class GoogleReview(BaseModel):
+    publisher: str
+    textual_rating: str
+    url: str
+    title: str | None = None
+    review_date: str | None = None
+
+
+class GoogleClaim(BaseModel):
+    text: str
+    claimant: str | None = None
+    reviews: list[GoogleReview]
 
 
 class FactCheckResult(BaseModel):
@@ -64,3 +78,13 @@ class TriggerContext(BaseModel):
     inline_query: str
     permalink: str
     source: Literal["comment_stream", "inbox_mention"]
+
+
+class PipelineOutcome(BaseModel):
+    """Tagged result of Pipeline.run so the bot knows which renderer to use."""
+
+    source: Literal["google", "llm"]
+    claim: str
+    google_claims: list[GoogleClaim] = Field(default_factory=list)
+    llm_result: FactCheckResult | None = None
+    evidence: list[Evidence] = Field(default_factory=list)
