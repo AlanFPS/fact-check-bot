@@ -1,0 +1,97 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "fact-check-bot",
+  "server": {
+    "entry": "dist/server/index.cjs"
+  },
+  "permissions": {
+    "reddit": true,
+    "redis": true,
+    "http": {
+      "enable": true,
+      "domains": [
+        "factchecktools.googleapis.com",
+        "openrouter.ai",
+        "api.tavily.com"
+      ]
+    }
+  },
+  "triggers": {
+    "onCommentSubmit": "/internal/triggers/on-comment-submit"
+  },
+  "scheduler": {
+    "tasks": {
+      "process-factcheck": {
+        "endpoint": "/internal/scheduler/process-factcheck"
+      }
+    }
+  },
+  "settings": [
+    {
+      "type": "string",
+      "name": "llmApiKey",
+      "label": "LLM API key (OpenRouter/OpenAI-compatible)",
+      "isSecret": true
+    },
+    {
+      "type": "string",
+      "name": "llmBaseUrl",
+      "label": "LLM base URL (OpenAI-compatible)",
+      "defaultValue": "https://openrouter.ai/api/v1"
+    },
+    {
+      "type": "string",
+      "name": "llmModel",
+      "label": "LLM model slug",
+      "defaultValue": "meta-llama/llama-3.3-70b-instruct:free"
+    },
+    {
+      "type": "string",
+      "name": "googleFactCheckApiKey",
+      "label": "Google Fact Check Tools API key (optional)",
+      "isSecret": true
+    },
+    {
+      "type": "string",
+      "name": "searchApiKey",
+      "label": "Web search API key (Tavily, optional)",
+      "isSecret": true
+    },
+    {
+      "type": "string",
+      "name": "botTrigger",
+      "label": "Trigger token",
+      "defaultValue": "!factcheck"
+    },
+    {
+      "type": "boolean",
+      "name": "dryRun",
+      "label": "Dry run (log reply, do not post)",
+      "defaultValue": true
+    },
+    {
+      "type": "boolean",
+      "name": "ignoreBots",
+      "label": "Ignore other bots",
+      "defaultValue": true
+    },
+    {
+      "type": "number",
+      "name": "rateLimitPerUserPerHour",
+      "label": "Replies per user per hour",
+      "defaultValue": 3
+    },
+    {
+      "type": "number",
+      "name": "rateLimitGlobalPerHour",
+      "label": "Replies (all users) per hour",
+      "defaultValue": 30
+    },
+    {
+      "type": "boolean",
+      "name": "enableVerdictCache",
+      "label": "Cache verdicts",
+      "defaultValue": true
+    }
+  ]
+}
